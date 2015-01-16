@@ -2,7 +2,7 @@ VC Storage
 ==========
 [![npm version](https://badge.fury.io/js/vc-storage.png)](http://badge.fury.io/js/vc-storage)
 
-[travis-ci.org]
+[![Build Status](https://travis-ci.org/jrmitty/vc-storage.svg)](https://travis-ci.org/jrmitty/vc-storage)
 
 
 ## What is this
