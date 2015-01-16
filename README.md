@@ -1,6 +1,7 @@
 VC Storage
 ==========
-[![NPM Version][npm-image]][npm-url]
+[![npm version](https://badge.fury.io/js/vc-storage.png)](http://badge.fury.io/js/vc-storage)
+
 [travis-ci.org]
 
 
@@ -9,15 +10,18 @@ Super simple file-based data store, all data is version controlled, GUID identif
 
 
 ## Installation
+
 `npm install vc-storage`
 
 
 ## Usage
 
 1. Load library to project
+
 `vcstorage = require('vc-storage');`
 
 2. Init data storing folder
+
 ```javascript
   vsstore.init({
     dataFolder: './datastore'
@@ -25,6 +29,7 @@ Super simple file-based data store, all data is version controlled, GUID identif
 ```
 
 3. Store or load data as wish
+
 ```javascript
 vsstore.getKeys().then(function(result){
     console.info('keys:', result);   // Array
@@ -44,14 +49,14 @@ vsstore.read('3c1c273a-09ea-4788-719d-b8fe8953eae6').then(function(result){
 
 ## Methods
 
- - `getKeys`: () - giving back all existing keys in storage folder as an array
- - `store`: (data, id) - storing object in the default folder, giving back it's GUID if success. If the ID is given and exists the version will bump to the next
- - `read`: (id, history) - loading the data of given ID. In default the latest version getting only, if the second parameter is `true`, the whole history will output too
+ - `getKeys()` - giving back all existing keys in storage folder as an array
+ - `store(data [, id])` - storing object in the default folder, giving back it's GUID if success. If the ID is given and exists the version will bump to the next
+ - `read(id [, history])` - loading the data of given ID. In default the latest version getting only, if the second parameter is `true`, the whole history will output too
 
 
 ## Further Todos
 
-- rollback feature
+- Feature extension: rollback, delete, exists, dump/restore, mget/mset (multiple)
 
 
 ## LICENSE
