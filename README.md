@@ -56,7 +56,7 @@ vsstore.read('3c1c273a-09ea-4788-719d-b8fe8953eae6').then(function(result){
 
 ## Further Todos
 
-- Feature extension: rollback, delete, exists, dump/restore, mget/mset (multiple)
+- Feature extension: rollback, dump/restore, mget/mset (multiple)
 
 
 ## LICENSE
