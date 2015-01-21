@@ -4,13 +4,20 @@ var vsStore = module.exports,
 	promise = require('node-promise'),
 	fs = require('fs-extra'),
 	moment = require('moment'),
-	getGuid = function getGuid() {
+	/**
+	 * [_getGuid description]
+	 * @private
+	 * @return {[type]} [description]
+	 */
+	_getGuid = function _getGuid() {
 		function s4() {
 			return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
 		}
 		return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
 	},
-	dataFolder = '';
+	initParams = {
+		dataFolder: ''
+	};
 
 /**
  * Initialize and set up data folder and other mandatory parameters
@@ -28,8 +35,21 @@ vsStore.init = function(setup) {
 	if (setup === undefined) {
 		return false;
 	}
-	dataFolder = setup.dataFolder;
+	initParams.dataFolder = setup.dataFolder;
 	return true;
+};
+
+/**
+ * Show the defined init parameters
+ * @return Object
+ * @example
+ * ```javascript
+ *
+ * vsstore.getInitParams();
+ * ```
+ */
+vsStore.getInitParams = function() {
+	return initParams;
 };
 
 /**
@@ -45,15 +65,17 @@ vsStore.init = function(setup) {
  */
 vsStore.getKeys = function() {
 	var deferred = new promise.Promise();
-	if (dataFolder === '') {
-		deferred.reject();
+	if (initParams.dataFolder === '') {
+		deferred.resolve(new Error('No data folder defined'));
+	} else {
+		fs.readdir(initParams.dataFolder, function(err, files) {
+			if (err) {
+				deferred.resolve(err);
+			} else {
+				deferred.resolve(files);
+			}
+		});
 	}
-	fs.readdir(dataFolder, function(err, files) {
-		if (err) {
-			deferred.reject();
-		}
-		deferred.resolve(files);
-	});
 	return deferred;
 };
 
@@ -74,9 +96,9 @@ vsStore.getKeys = function() {
  */
 vsStore.store = function(data, key) {
 	var deferred = new promise.Promise(),
-		guid = (key !== undefined) ? key : getGuid(),
+		guid = (key !== undefined) ? key : _getGuid(),
 		contentData = data,
-		filePath = dataFolder + '/' + guid,
+		filePath = initParams.dataFolder + '/' + guid,
 		newContent = {
 			_version: 0,
 			_modified: null,
@@ -86,7 +108,7 @@ vsStore.store = function(data, key) {
 	if (data === undefined) {
 		deferred.reject();
 	}
-	if (dataFolder === '') {
+	if (initParams.dataFolder === '') {
 		deferred.reject();
 	}
 	fs.readJson(filePath, function(err, data) {
@@ -133,10 +155,10 @@ vsStore.read = function(key, history) {
 	if (key === undefined) {
 		deferred.reject();
 	}
-	if (dataFolder === '') {
+	if (initParams.dataFolder === '') {
 		deferred.reject();
 	}
-	fs.readJson(dataFolder + '/' + key, function(err, data) {
+	fs.readJson(initParams.dataFolder + '/' + key, function(err, data) {
 		if (err) {
 			deferred.reject();
 		}
@@ -146,5 +168,52 @@ vsStore.read = function(key, history) {
 	return deferred;
 };
 
+vsStore.del = function(key) {
+	var deferred = new promise.Promise(),
+		result = null;
+	if (key === undefined) {
+		deferred.reject();
+	}
+	if (initParams.dataFolder === '') {
+		deferred.reject();
+	}
+	fs.remove(initParams.dataFolder + '/' + key, function(err) {
+		if (err) {
+			deferred.reject();
+		}
+		deferred.resolve(true);
+	});
+	return deferred;
+};
+
+vsStore.exists = function(key) {
+	var deferred = new promise.Promise(),
+		result = null;
+	if (key === undefined) {
+		deferred.reject();
+	}
+	if (initParams.dataFolder === '') {
+		deferred.reject();
+	}
+	fs.exists(initParams.dataFolder + '/' + key, function(exists) {
+		if (!exists) {
+			deferred.resolve(false);
+		} else {
+			deferred.resolve(true);
+		}
+	});
+	return deferred;
+};
+
 
 /* var vsstore = require('./vsstore.js'); */
+
+
+
+/* TODO
+
+- dump / restore
+- mget (multiple) / mset
+- rollback
+
+*/
