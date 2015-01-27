@@ -66,14 +66,16 @@ vsStore.getInitParams = function() {
 vsStore.getKeys = function() {
 	var deferred = new promise.Promise();
 	if (initParams.dataFolder === '') {
-		deferred.resolve(new Error('No data folder defined'));
+		deferred.resolve({
+			success: false,
+			message: 'Data storing folder is not set'
+		});
 	} else {
-		fs.readdir(initParams.dataFolder, function(err, files) {
-			if (err) {
-				deferred.resolve(err);
-			} else {
-				deferred.resolve(files);
-			}
+		fs.readdir(initParams.dataFolder, function(err, keys) {
+			deferred.resolve({
+				success: true,
+				data: keys
+			});
 		});
 	}
 	return deferred;
@@ -105,34 +107,35 @@ vsStore.store = function(data, key) {
 			_history: {},
 			content: {}
 		};
-	if (data === undefined) {
-		deferred.reject();
-	}
-	if (initParams.dataFolder === '') {
-		deferred.reject();
-	}
-	fs.readJson(filePath, function(err, data) {
-		if (!err) {
-			newContent = data;
-			newContent._history[data._modified] = {
-				_version: data._version,
-				_modified: data._modified,
-				content: data.content
-			};
-		}
-		newContent._version += 1;
-		newContent._modified = moment().format();
-		newContent.content = contentData;
-		newContent.content._key = guid;
-		fs.outputFile(filePath, JSON.stringify(newContent), function(err) {
-			if (err) {
-				deferred.reject();
+
+	if (data === undefined || data === '') {
+		deferred.resolve({
+			success: false,
+			message: new Error('"data" is not defined')
+		});
+	} else {
+		fs.readJson(filePath, function(err, data) {
+			if (!err) {
+				newContent = data;
+				newContent._history[data._modified] = {
+					_version: data._version,
+					_modified: data._modified,
+					content: data.content
+				};
 			}
-			deferred.resolve({
-				_key: guid
+			newContent._version += 1;
+			newContent._modified = moment().format();
+			newContent.content = contentData;
+			newContent.content._key = guid;
+			fs.outputFile(filePath, JSON.stringify(newContent), function(err) {
+				deferred.resolve({
+					success: true,
+					data: guid
+				});
 			});
 		});
-	});
+	}
+
 	return deferred;
 };
 
@@ -152,56 +155,201 @@ vsStore.store = function(data, key) {
 vsStore.read = function(key, history) {
 	var deferred = new promise.Promise(),
 		result = null;
-	if (key === undefined) {
-		deferred.reject();
+
+	if (key === undefined || key === '') {
+		deferred.resolve({
+			success: false,
+			message: new Error('"key" is not defined')
+		});
+	} else {
+		fs.readJson(initParams.dataFolder + '/' + key, function(err, data) {
+			try {
+				result = (history === true) ? data : data.content;
+				deferred.resolve({
+					success: true,
+					data: result
+				});
+			} catch (err) {
+				deferred.resolve({
+					success: false,
+					message: err
+				});
+			}
+		});
 	}
-	if (initParams.dataFolder === '') {
-		deferred.reject();
-	}
-	fs.readJson(initParams.dataFolder + '/' + key, function(err, data) {
-		if (err) {
-			deferred.reject();
-		}
-		result = (history === true) ? data : data.content;
-		deferred.resolve(result);
-	});
+
 	return deferred;
 };
 
+/**
+ * [del description]
+ * @param  {[type]} key [description]
+ * @return {[type]}     [description]
+ */
 vsStore.del = function(key) {
-	var deferred = new promise.Promise(),
-		result = null;
-	if (key === undefined) {
-		deferred.reject();
+	var deferred = new promise.Promise();
+
+	if (key === undefined || key === '') {
+		deferred.resolve({
+			success: false,
+			message: new Error('"key" is not defined')
+		});
+	} else {
+		fs.remove(initParams.dataFolder + '/' + key, function(err) {
+			deferred.resolve({
+				success: true
+			});
+		});
 	}
-	if (initParams.dataFolder === '') {
-		deferred.reject();
-	}
-	fs.remove(initParams.dataFolder + '/' + key, function(err) {
-		if (err) {
-			deferred.reject();
-		}
-		deferred.resolve(true);
-	});
+
 	return deferred;
 };
 
+/**
+ * [exists description]
+ * @param  {[type]} key [description]
+ * @return {[type]}     [description]
+ */
 vsStore.exists = function(key) {
+	var deferred = new promise.Promise();
+
+	if (key === undefined || key === '') {
+		deferred.resolve({
+			success: false,
+			message: new Error('"key" is not defined')
+		});
+	} else {
+		fs.exists(initParams.dataFolder + '/' + key, function(exists) {
+			if (!exists) {
+				deferred.resolve({
+					success: false
+				});
+			} else {
+				deferred.resolve({
+					success: true
+				});
+			}
+		});
+	}
+
+	return deferred;
+};
+
+/**
+ * [mset description]
+ * @param  {[type]} array [description]
+ * @return {[type]}       [description]
+ */
+vsStore.mset = function(array) { // Only for creation yet
 	var deferred = new promise.Promise(),
-		result = null;
-	if (key === undefined) {
-		deferred.reject();
+		setMList = function setMList(list) {
+			var i = 0,
+				deferred = new promise.Promise(),
+				mList = [];
+			list.forEach(function(item) {
+				mList.push(vsStore.store(item));
+			});
+			deferred.resolve(mList);
+			return deferred;
+		};
+
+	try {
+		setMList(array).then(function(mList) {
+			promise.all(mList).then(function(keys) {
+				deferred.resolve({
+					success: true,
+					data: keys
+				});
+			});
+		});
+	} catch (err) {
+		deferred.resolve({
+			success: false,
+			message: err
+		});
 	}
-	if (initParams.dataFolder === '') {
-		deferred.reject();
+
+	return deferred;
+};
+
+/**
+ * Get multiple object on the same time
+ * @param  array [description]
+ * @return Object
+ */
+vsStore.mget = function(array) { // Currently only without history
+	var deferred = new promise.Promise(),
+		setGList = function setGList(list) {
+			var i = 0,
+				deferred = new promise.Promise(),
+				gList = [];
+			list.forEach(function(item) {
+				gList.push(vsStore.read(item));
+			});
+			deferred.resolve(gList);
+			return deferred;
+		};
+
+	try {
+		setGList(array).then(function(gList) {
+			promise.all(gList).then(function(dataItems) {
+				deferred.resolve({
+					success: true,
+					data: dataItems
+				});
+			});
+		});
+	} catch (err) {
+		deferred.resolve({
+			success: false,
+			message: err
+		});
 	}
-	fs.exists(initParams.dataFolder + '/' + key, function(exists) {
-		if (!exists) {
-			deferred.resolve(false);
-		} else {
-			deferred.resolve(true);
-		}
-	});
+
+	return deferred;
+};
+
+
+vsStore.rollback = function(key, version) {
+	var deferred = new promise.Promise();
+
+	if (key === undefined || key === '' || version === undefined || version === '') {
+		deferred.resolve({
+			success: false,
+			message: new Error('"key" and "version" also need to be defined')
+		});
+	} else {
+		vsStore.read(key, true).then(function(dataFile) {
+			if (dataFile.data._version < version) {
+				deferred.resolve({
+					success: false,
+					message: new Error('There is no such a version number')
+				});
+			} else if (dataFile.data._version == version) {
+				deferred.resolve({
+					success: false,
+					message: new Error('The selected version is the current one')
+				});
+			} else {
+				var history = dataFile.data._history;
+				for (var prop in history) {
+					if (history.hasOwnProperty(prop)) {
+						if (history[prop]._version === version) {
+							vsStore.store(history[prop].content, key).then(function(stored) {
+								if (stored.success === true) {
+									deferred.resolve({
+										success: true,
+										data: history[prop].content
+									});
+								}
+							});
+						}
+					}
+				}
+			}
+		});
+	}
+
 	return deferred;
 };
 
@@ -212,8 +360,6 @@ vsStore.exists = function(key) {
 
 /* TODO
 
-- dump / restore
-- mget (multiple) / mset
-- rollback
+- dump - restore
 
 */
