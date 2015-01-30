@@ -1,6 +1,6 @@
 {
   "name": "vc-storage",
-  "version": "0.4.1",
+  "version": "0.8.4",
   "description": "Super simple file-based data store, all data is version controlled, GUID identified, flexible and scalable",
   "main": "lib-vcs/index.js",
   "scripts": {
